@@ -1,24 +1,28 @@
 package internal
 
 import (
+	"context"
 	"database/sql"
 	"errors"
-	"local/gokit-test/internal/model"
+	"local/gokit-test/models"
+
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 type AuthService interface {
 	Authenticate(username, password string) (bool, error)
-	GetUser(id uint) (model.User, error)
-	GetUsers() []model.User
-	CreateUser(user CreateUserRequest) model.User
+	GetUser(ctx context.Context, id uint) (*models.User, error)
+	GetUsers(ctx context.Context) (models.UserSlice, error)
+	CreateUser(ctx context.Context, user CreateUserRequest) (*models.User, error)
 }
 
 type authService struct {
-	repo model.UserRepository
+	db *sql.DB
 }
 
-func NewAuthService(repo model.UserRepository) AuthService {
-	return authService{repo: repo}
+func NewAuthService(db *sql.DB) AuthService {
+	return authService{db: db}
 }
 
 func (authService) Authenticate(username, password string) (bool, error) {
@@ -31,8 +35,8 @@ func (authService) Authenticate(username, password string) (bool, error) {
 
 var ErrNotFound = errors.New("not found")
 
-func (a authService) GetUser(id uint) (model.User, error) {
-	user, err := a.repo.FindOneById(id)
+func (a authService) GetUser(ctx context.Context, id uint) (*models.User, error) {
+	user, err := models.FindUser(ctx, a.db, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return user, ErrNotFound
@@ -43,15 +47,21 @@ func (a authService) GetUser(id uint) (model.User, error) {
 	return user, nil
 }
 
-func (a authService) GetUsers() []model.User {
-	return a.repo.FindMany()
+func (a authService) GetUsers(ctx context.Context) (models.UserSlice, error) {
+	u, err := models.Users().All(ctx, a.db)
+
+	return u, err
 }
 
 var ErrInvalidArgument = errors.New("invalid argument")
 
-func (a authService) CreateUser(user CreateUserRequest) model.User {
-	id := a.repo.Insert(user.Name, user.Phone)
-	u, _ := a.GetUser(uint(id))
+func (a authService) CreateUser(ctx context.Context, cur CreateUserRequest) (*models.User, error) {
+	user := &models.User{
+		Name:  cur.Name,
+		Phone: null.StringFromPtr(cur.Phone),
+	}
 
-	return u
+	err := user.Insert(ctx, a.db, boil.Infer())
+
+	return user, err
 }

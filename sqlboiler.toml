@@ -1,0 +1,7 @@
+[mysql]
+dbname = "gokit"
+host = "127.0.0.1"
+port = 3326
+user = "root"
+pass = "root"
+sslmode = "false"

@@ -9,7 +9,6 @@ import (
 
 	"database/sql"
 
-	"local/gokit-test/internal/model"
 	"strconv"
 
 	transport "github.com/go-kit/kit/transport/http"
@@ -94,7 +93,7 @@ func NewHTTPHandler() http.Handler {
 	}
 	log.Print("Connected to db")
 
-	svc := NewAuthService(model.NewUserRespository(db))
+	svc := NewAuthService(db)
 
 	r := mux.NewRouter()
 	r.Methods("GET").Path("/").Handler(transport.NewServer(MakeHomeEndpoint(), decodeHomeRequest, encodeResponse))

@@ -6,7 +6,7 @@ import (
 	"github.com/go-kit/kit/endpoint"
 	"github.com/go-playground/validator/v10"
 
-	"local/gokit-test/internal/model"
+	"local/gokit-test/models"
 )
 
 type errorer interface {
@@ -34,8 +34,8 @@ type GetUserRequest struct {
 }
 
 type GetUserResponse struct {
-	User model.User `json:"user"`
-	Err  error      `json:"error,omitempty"`
+	User *models.User `json:"user"`
+	Err  error        `json:"error,omitempty"`
 }
 
 func (r GetUserResponse) error() error {
@@ -45,21 +45,17 @@ func (r GetUserResponse) error() error {
 type GetUsersRequest struct{}
 
 type GetUsersResponse struct {
-	Users []model.User `json:"users"`
+	Users models.UserSlice `json:"users"`
+	Err   error            `json:"error,omitempty"`
+}
+
+func (r GetUsersResponse) error() error {
+	return r.Err
 }
 
 type CreateUserRequest struct {
-	Name  string `json:"name" validate:"required"`
-	Phone string `json:"phone" validate:"required"`
-}
-
-type CreateUserResponse struct {
-	User model.User `json:"user,omitempty"`
-	Err  error      `json:"error,omitempty"`
-}
-
-func (r CreateUserResponse) error() error {
-	return r.Err
+	Name  string  `json:"name" validate:"required"`
+	Phone *string `json:"phone"`
 }
 
 type ValidationErrorResponse struct {
@@ -84,22 +80,22 @@ func MakeHomeEndpoint() endpoint.Endpoint {
 }
 
 func MakeGetUserEndpoint(svc AuthService) endpoint.Endpoint {
-	return func(_ context.Context, request interface{}) (interface{}, error) {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		req := request.(GetUserRequest)
-		user, err := svc.GetUser(req.Id)
+		user, err := svc.GetUser(ctx, req.Id)
 		return GetUserResponse{User: user, Err: err}, nil
 	}
 }
 
 func MakeGetUsersEndpoint(svc AuthService) endpoint.Endpoint {
-	return func(_ context.Context, request interface{}) (interface{}, error) {
-		users := svc.GetUsers()
-		return GetUsersResponse{Users: users}, nil
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		users, err := svc.GetUsers(ctx)
+		return GetUsersResponse{Users: users, Err: err}, nil
 	}
 }
 
 func MakeCreateUserEndpoint(svc AuthService) endpoint.Endpoint {
-	return func(_ context.Context, request interface{}) (interface{}, error) {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		req := request.(CreateUserRequest)
 
 		validate := validator.New()
@@ -108,7 +104,8 @@ func MakeCreateUserEndpoint(svc AuthService) endpoint.Endpoint {
 			return ValidationErrorResponse{Errors: err.Error()}, nil
 		}
 
-		user := svc.CreateUser(req)
-		return GetUserResponse{User: user}, nil
+		user, err := svc.CreateUser(ctx, req)
+
+		return GetUserResponse{User: user, Err: err}, nil
 	}
 }
