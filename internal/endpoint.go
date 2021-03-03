@@ -34,8 +34,9 @@ type GetUserRequest struct {
 }
 
 type GetUserResponse struct {
-	User *models.User `json:"user"`
-	Err  error        `json:"error,omitempty"`
+	User     *models.User         `json:"user"`
+	Comments *models.CommentSlice `json:"comments,omitempty"`
+	Err      error                `json:"error,omitempty"`
 }
 
 func (r GetUserResponse) error() error {
@@ -83,7 +84,7 @@ func MakeGetUserEndpoint(svc AuthService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		req := request.(GetUserRequest)
 		user, err := svc.GetUser(ctx, req.Id)
-		return GetUserResponse{User: user, Err: err}, nil
+		return GetUserResponse{User: user, Comments: &user.R.Comments, Err: err}, nil
 	}
 }
 

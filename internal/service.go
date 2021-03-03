@@ -8,6 +8,7 @@ import (
 
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type AuthService interface {
@@ -44,11 +45,14 @@ func (a authService) GetUser(ctx context.Context, id uint) (*models.User, error)
 		return user, err
 	}
 
+	// Fetch comments
+	_ = user.L.LoadComments(ctx, a.db, true, user, nil)
+
 	return user, nil
 }
 
 func (a authService) GetUsers(ctx context.Context) (models.UserSlice, error) {
-	u, err := models.Users().All(ctx, a.db)
+	u, err := models.Users(qm.Load(models.UserRels.Comments)).All(ctx, a.db)
 
 	return u, err
 }
